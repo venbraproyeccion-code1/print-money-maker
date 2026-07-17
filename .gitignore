@@ -1,0 +1,8 @@
+﻿# Entornos virtuales
+venv/
+.env
+
+# Archivos del sistema y logs
+*.log
+.DS_Store
+Thumbs.db

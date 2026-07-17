@@ -1,0 +1,6 @@
+[submodule "tools/sherlock"]
+	path = tools/sherlock
+	url = https://github.com/venbraproyeccion-code1/sherlock.git
+[submodule "tools/yt-dlp"]
+	path = tools/yt-dlp
+	url = https://github.com/venbraproyeccion-code1/yt-dlp.git
