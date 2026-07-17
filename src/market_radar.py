@@ -3,20 +3,33 @@
 """
 MARKET RADAR — VenBraX print-money-maker
 =========================================
-Módulo 1 del pipeline: detecta tendencias calientes en YouTube.
+Módulo 1 del pipeline: detecta tendencias calientes en YouTube y (opcional)
+las combina con un export de tendencias de Pinterest.
 
 Flujo:
   1. Busca en YouTube los videos más relevantes para cada palabra clave
      (usa yt-dlp: primero el submódulo local en tools/yt-dlp, si no, el paquete pip).
   2. Extrae título, etiquetas, vistas, canal y descripción de cada video.
-  3. Analiza todo el texto y cuenta los términos y bigramas más repetidos
+  3. Si se pasa --pinterest-json, carga ese archivo (generado por el repo
+     hermano Pinterest-Scraper) y lo suma al análisis con el mismo peso
+     editorial que un video.
+  4. Analiza todo el texto y cuenta los términos y bigramas más repetidos
      (filtrando stopwords en español e inglés).
-  4. Guarda el resultado en data/trends_detected.json — insumo directo
+  5. Guarda el resultado en data/trends_detected.json — insumo directo
      para src/product_generator.py.
+
+Integración con Pinterest-Scraper:
+  Este módulo NO scrapea Pinterest directamente (ese trabajo con Selenium
+  vive en su propio repo, Pinterest-Scraper). Lo que hace es leer un JSON
+  que ese scraper exporte, con este esquema mínimo por item:
+    [{"title": "...", "description": "...", "tags": ["...", ...]}, ...]
+  (mismo esquema que un video de YouTube, para que analyze_trends() lo
+  procese sin cambios). Ver load_pinterest_export() más abajo.
 
 Uso:
   python src/market_radar.py
   python src/market_radar.py --keywords "n8n" "make.com" --max-videos 15
+  python src/market_radar.py --pinterest-json data/pinterest_export.json
   python src/market_radar.py --output data/mi_radar.json
 """
 
@@ -115,6 +128,45 @@ def search_youtube(keyword: str, max_videos: int) -> list:
 
 
 # ---------------------------------------------------------------------------
+# 1b) EXTRACCIÓN — Pinterest (vía export de Pinterest-Scraper, no scrapea aquí)
+# ---------------------------------------------------------------------------
+def load_pinterest_export(path: Path) -> list:
+    """Carga un JSON exportado por el repo Pinterest-Scraper y lo normaliza
+    al mismo esquema que search_youtube() (title/tags/description/views),
+    para que analyze_trends() los procese sin distinguir la fuente.
+
+    Esquema mínimo esperado por item: {"title": str, "description": str,
+    "tags": [str, ...]}. Campos extra se ignoran; campos ausentes usan
+    valores vacíos en lugar de fallar (un pin mal formado no tumba el radar).
+    """
+    if not path.exists():
+        print(f"[WARN] No existe el export de Pinterest: {path}")
+        return []
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"[WARN] No pude leer el export de Pinterest ({path}): {exc}")
+        return []
+
+    items = raw if isinstance(raw, list) else raw.get("pins", raw.get("items", []))
+    pins = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        pins.append({
+            "title": item.get("title", ""),
+            "url": item.get("url") or item.get("link", ""),
+            "channel": item.get("board") or item.get("author", ""),
+            "views": item.get("saves") or item.get("views") or 0,
+            "duration_s": 0,
+            "upload_date": item.get("date", ""),
+            "tags": item.get("tags") or item.get("hashtags") or [],
+            "description": (item.get("description") or "")[:1500],
+        })
+    return pins
+
+
+# ---------------------------------------------------------------------------
 # 2) ANÁLISIS — términos y bigramas más repetidos
 # ---------------------------------------------------------------------------
 def normalize(text: str) -> str:
@@ -167,7 +219,8 @@ def analyze_trends(videos: list) -> dict:
 # ---------------------------------------------------------------------------
 # 3) ORQUESTACIÓN + SALIDA JSON
 # ---------------------------------------------------------------------------
-def run_radar(keywords: list, max_videos: int, output: Path) -> dict:
+def run_radar(keywords: list, max_videos: int, output: Path,
+             pinterest_json: Path = None) -> dict:
     all_videos = []
     per_keyword = {}
 
@@ -186,11 +239,20 @@ def run_radar(keywords: list, max_videos: int, output: Path) -> dict:
         }
         all_videos.extend(videos)
 
+    pinterest_pins = []
+    if pinterest_json:
+        print(f"[RADAR] Cargando export de Pinterest: {pinterest_json}...")
+        pinterest_pins = load_pinterest_export(pinterest_json)
+        print(f"[RADAR]   -> {len(pinterest_pins)} pins cargados")
+
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "keywords_scanned": keywords,
         "total_videos_analyzed": len(all_videos),
-        "global_trends": analyze_trends(all_videos),
+        "total_pins_analyzed": len(pinterest_pins),
+        "global_trends": analyze_trends(all_videos + pinterest_pins),
+        "youtube_trends": analyze_trends(all_videos),
+        "pinterest_trends": analyze_trends(pinterest_pins) if pinterest_pins else None,
         "by_keyword": per_keyword,
     }
 
@@ -217,8 +279,10 @@ def main() -> None:
                         help="Videos por palabra clave (default: 10)")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
                         help="Ruta del JSON de salida")
+    parser.add_argument("--pinterest-json", type=Path, default=None,
+                        help="JSON exportado por Pinterest-Scraper a sumar al análisis")
     args = parser.parse_args()
-    run_radar(args.keywords, args.max_videos, args.output)
+    run_radar(args.keywords, args.max_videos, args.output, args.pinterest_json)
 
 
 if __name__ == "__main__":
