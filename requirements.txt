@@ -1,0 +1,8 @@
+# print-money-maker — dependencias del pipeline VenBraX
+# Instalar con: pip install -r requirements.txt
+
+# Extracción de metadatos de YouTube (Módulo 1: market_radar.py)
+yt-dlp>=2025.1.1
+
+# NOTA: pandas se añadirá cuando product_generator.py lo necesite
+# (market_radar.py usa solo la librería estándar para el análisis).

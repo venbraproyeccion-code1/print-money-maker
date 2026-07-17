@@ -6,3 +6,10 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+
+# Datos generados por el radar
+data/*.json
+
+# Python
+__pycache__/
+*.pyc
