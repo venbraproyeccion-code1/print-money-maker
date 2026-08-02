@@ -2,6 +2,10 @@
 venv/
 .env
 
+# Productos generados localmente (no versionar salidas, solo el codigo)
+src/output/
+__pycache__/
+
 # Archivos del sistema y logs
 *.log
 .DS_Store
