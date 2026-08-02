@@ -4,8 +4,6 @@ Sistema automatizado de inteligencia de mercado, generación y auditoría de pro
 ## Estructura del Proyecto
 * **src/**: Scripts principales del radar de tendencias, generador y auditor.
 * **tools/**: Submódulos enlazados de herramientas externas de automatización.
-* **mockups/**: Mockups estáticos de identidad/e-commerce (HTML autocontenido, sin build), para revisar
-  en navegador antes de portarlos a un tema real de Shopify.
 
 ## Estado real (2026-08-02)
 
@@ -26,10 +24,3 @@ Sistema automatizado de inteligencia de mercado, generación y auditoría de pro
   contenido gratuito (ver arriba); esto se retoma cuando haya tracción real, no antes.
 
 - **`market_radar.py`** y **`marketing_auditor.py`** — todavía vacíos, sin construir.
-
-- **`mockups/pdp-command-nexus.html`** — mockup de la página de producto (PDP) "The Command Nexus"
-  del rebranding VENBRAX (identidad "angular", titanium frío + acentos neón). Incluye el reveal de
-  logo tipo "corte láser", el "Anillo de Integridad" pulsante alrededor del CTA principal y la
-  garantía dinámica ("Protocolo VENBRAX activo: latencia de cifrado < 0.01ms"). Ábrelo directo en el
-  navegador — no requiere build ni dependencias. Es un punto de partida visual para el tema de
-  Shopify/Storefront, no una implementación de theme Liquid.
